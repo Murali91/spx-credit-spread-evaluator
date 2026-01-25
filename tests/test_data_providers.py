@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Dict
 
 import pandas as pd
@@ -36,6 +37,27 @@ def test_get_market_data_returns_close_and_moving_average(monkeypatch) -> None:
     assert result["close"] == float(history["Close"].iloc[-1])
     assert result["moving_average"] == float(history["Close"].rolling(200).mean().iloc[-1])
     assert set(result.keys()) == {"close", "moving_average"}
+
+
+def test_fetch_spy_history_cache_varies_by_date(monkeypatch) -> None:
+    history = _build_history(10)
+    calls: Dict[str, int] = {"count": 0}
+
+    def fake_download(*_args, **_kwargs) -> pd.DataFrame:
+        calls["count"] += 1
+        return history
+
+    market_data._fetch_spy_history.cache_clear()
+    monkeypatch.setattr(market_data.yf, "download", fake_download)
+
+    today = date(2024, 1, 1)
+    tomorrow = today + timedelta(days=1)
+
+    market_data._fetch_spy_history(today)
+    market_data._fetch_spy_history(today)
+    market_data._fetch_spy_history(tomorrow)
+
+    assert calls["count"] == 2
 
 
 def test_get_vol_data_computes_metrics_and_caches(monkeypatch) -> None:
