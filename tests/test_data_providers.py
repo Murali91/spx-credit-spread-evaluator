@@ -80,6 +80,27 @@ def test_get_vol_data_computes_metrics_and_caches(monkeypatch) -> None:
     assert result["iv_percentile"] == 1.0
 
 
+def test_fetch_vix_history_cache_varies_by_date(monkeypatch) -> None:
+    history = _build_history(10)
+    calls: Dict[str, int] = {"count": 0}
+
+    def fake_download(*_args, **_kwargs) -> pd.DataFrame:
+        calls["count"] += 1
+        return history
+
+    vol_data._fetch_vix_history.cache_clear()
+    monkeypatch.setattr(vol_data.yf, "download", fake_download)
+
+    today = date(2024, 1, 1)
+    tomorrow = today + timedelta(days=1)
+
+    vol_data._fetch_vix_history(today)
+    vol_data._fetch_vix_history(today)
+    vol_data._fetch_vix_history(tomorrow)
+
+    assert calls["count"] == 2
+
+
 def test_get_skew_data_computes_percentile(monkeypatch) -> None:
     history = _build_history(260)
 
