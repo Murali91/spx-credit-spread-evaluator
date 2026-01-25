@@ -63,12 +63,16 @@ def test_fetch_spy_history_cache_varies_by_date(monkeypatch) -> None:
 def test_get_vol_data_computes_metrics_and_caches(monkeypatch) -> None:
     history = _build_history(260)
     calls: Dict[str, int] = {"count": 0}
+    fixed_now = pd.Timestamp(2024, 1, 1, 10, 0, 0)
 
     def fake_download(*_args, **_kwargs) -> pd.DataFrame:
         calls["count"] += 1
         return history
 
     vol_data._fetch_vix_history.cache_clear()
+    monkeypatch.setattr(
+        vol_data.pd.Timestamp, "utcnow", lambda *args, **kwargs: fixed_now
+    )
     monkeypatch.setattr(vol_data.yf, "download", fake_download)
 
     result = vol_data.get_vol_data()
