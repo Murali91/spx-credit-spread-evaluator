@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from typing import Dict
 
 import pandas as pd
@@ -50,12 +50,12 @@ def test_fetch_spy_history_cache_varies_by_date(monkeypatch) -> None:
     market_data._fetch_spy_history.cache_clear()
     monkeypatch.setattr(market_data.yf, "download", fake_download)
 
-    today = date(2024, 1, 1)
-    tomorrow = today + timedelta(days=1)
+    morning = datetime(2024, 1, 1, 10, 0, 0)
+    evening = morning + timedelta(hours=8)
 
-    market_data._fetch_spy_history(today)
-    market_data._fetch_spy_history(today)
-    market_data._fetch_spy_history(tomorrow)
+    market_data._fetch_spy_history(morning)
+    market_data._fetch_spy_history(morning)
+    market_data._fetch_spy_history(evening)
 
     assert calls["count"] == 2
 
@@ -91,12 +91,12 @@ def test_fetch_vix_history_cache_varies_by_date(monkeypatch) -> None:
     vol_data._fetch_vix_history.cache_clear()
     monkeypatch.setattr(vol_data.yf, "download", fake_download)
 
-    today = date(2024, 1, 1)
-    tomorrow = today + timedelta(days=1)
+    morning = datetime(2024, 1, 1, 10, 0, 0)
+    evening = morning + timedelta(hours=8)
 
-    vol_data._fetch_vix_history(today)
-    vol_data._fetch_vix_history(today)
-    vol_data._fetch_vix_history(tomorrow)
+    vol_data._fetch_vix_history(morning)
+    vol_data._fetch_vix_history(morning)
+    vol_data._fetch_vix_history(evening)
 
     assert calls["count"] == 2
 
@@ -127,11 +127,11 @@ def test_fetch_skew_history_cache_varies_by_date(monkeypatch) -> None:
     skew_data._fetch_skew_history.cache_clear()
     monkeypatch.setattr(skew_data.yf, "download", fake_download)
 
-    today = date(2024, 1, 1)
-    tomorrow = today + timedelta(days=1)
+    morning = datetime(2024, 1, 1, 10, 0, 0)
+    evening = morning + timedelta(hours=8)
 
-    skew_data._fetch_skew_history(today)
-    skew_data._fetch_skew_history(today)
-    skew_data._fetch_skew_history(tomorrow)
+    skew_data._fetch_skew_history(morning)
+    skew_data._fetch_skew_history(morning)
+    skew_data._fetch_skew_history(evening)
 
     assert calls["count"] == 2

@@ -6,7 +6,7 @@ derives basic trend inputs used by the decision engine.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import datetime
 from functools import lru_cache
 from typing import Dict, Optional
 
@@ -19,10 +19,11 @@ _LOOKBACK_DAYS = 400
 _MOVING_AVG_WINDOW = 200
 
 
-@lru_cache(maxsize=8)
-def _fetch_spy_history(as_of: date) -> pd.DataFrame:
-    start = (pd.Timestamp(as_of) - pd.Timedelta(days=_LOOKBACK_DAYS)).date()
-    end = (pd.Timestamp(as_of) + pd.Timedelta(days=1)).date()
+@lru_cache(maxsize=48)
+def _fetch_spy_history(as_of: datetime) -> pd.DataFrame:
+    as_of_date = pd.Timestamp(as_of).date()
+    start = (pd.Timestamp(as_of_date) - pd.Timedelta(days=_LOOKBACK_DAYS)).date()
+    end = (pd.Timestamp(as_of_date) + pd.Timedelta(days=1)).date()
     history = yf.download(
         _SPY_SYMBOL,
         start=start,
@@ -48,7 +49,8 @@ def get_market_data() -> Dict[str, Optional[float]]:
         Dict[str, Optional[float]]: Market data including latest close and a
         long-term moving average.
     """
-    history = _fetch_spy_history(pd.Timestamp.utcnow().date())
+    cache_key = pd.Timestamp.utcnow().floor("h").to_pydatetime()
+    history = _fetch_spy_history(cache_key)
     close_series = history["Close"].copy()
     latest_close = float(close_series.iloc[-1])
     moving_average = _calculate_moving_average(close_series)
