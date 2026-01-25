@@ -15,7 +15,17 @@ these stubs with real calculations based on the thresholds defined in
 ``engine.thresholds``.
 """
 
-from typing import Dict
+from typing import Dict, Optional
+
+from engine import thresholds
+
+
+def _as_float(value: object) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
 
 
 def compute_trend_factor(market_data: Dict) -> int:
@@ -37,7 +47,15 @@ def compute_trend_factor(market_data: Dict) -> int:
     Returns:
         int: The trend score (+1, 0 or -1).
     """
-    # TODO: implement real trend analysis using market_data
+    close = _as_float(market_data.get("close"))
+    moving_average = _as_float(market_data.get("moving_average"))
+    if close is None or moving_average is None:
+        return 0
+    if thresholds.TREND_REQUIRE_ABOVE_MA:
+        if close > moving_average:
+            return 1
+        if close < moving_average:
+            return -1
     return 0
 
 
@@ -56,7 +74,23 @@ def compute_volatility_factor(vol_data: Dict) -> int:
     Returns:
         int: The volatility score (+1, 0 or -1).
     """
-    # TODO: implement real volatility evaluation using vol_data
+    vix = _as_float(vol_data.get("vix"))
+    iv_percentile = _as_float(vol_data.get("iv_percentile"))
+    vix_change_pct = _as_float(vol_data.get("vix_change_pct"))
+
+    if vix_change_pct is not None and vix_change_pct >= thresholds.VIX_SPIKE_PERCENT_CHANGE:
+        return -1
+    if vix is not None and vix >= thresholds.VIX_EXTREME_LEVEL:
+        return -1
+
+    if iv_percentile is None:
+        return 0
+    if iv_percentile < thresholds.VIX_ELEVATED_PERCENTILE:
+        return -1
+    if iv_percentile >= thresholds.VIX_ELEVATED_PERCENTILE:
+        if vix_change_pct is not None and vix_change_pct < 0:
+            return 1
+        return 0
     return 0
 
 
@@ -94,5 +128,11 @@ def compute_skew_factor(skew_data: Dict) -> int:
     Returns:
         int: The skew/liquidity score (+1, 0 or -1).
     """
-    # TODO: implement real skew evaluation using skew_data
-    return 0
+    skew = _as_float(skew_data.get("skew"))
+    if skew is None:
+        return 0
+    if skew >= thresholds.SKEW_DISQUALIFY_LEVEL:
+        return -1
+    if skew > thresholds.SKEW_CAUTION_LEVEL:
+        return 0
+    return 1
