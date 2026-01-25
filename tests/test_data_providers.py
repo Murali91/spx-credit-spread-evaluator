@@ -77,7 +77,7 @@ def test_get_vol_data_computes_metrics_and_caches(monkeypatch) -> None:
     assert calls["count"] == 1
     assert result == second_result
     assert result["vix"] == float(history["Close"].iloc[-1])
-    assert result["iv_percentile"] == 100.0
+    assert result["iv_percentile"] == 1.0
 
 
 def test_get_skew_data_computes_percentile(monkeypatch) -> None:
@@ -92,4 +92,4 @@ def test_get_skew_data_computes_percentile(monkeypatch) -> None:
     result = skew_data.get_skew_data()
 
     assert result["skew"] == float(history["Close"].iloc[-1])
-    assert result["skew_percentile_1y"] == 100.0
+    assert result["skew_percentile_1y"] == 1.0

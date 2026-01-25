@@ -33,7 +33,7 @@ def _fetch_vix_history() -> pd.DataFrame:
 def _calculate_percentile_rank(series: pd.Series) -> Optional[float]:
     if series.empty:
         return None
-    percentile = series.rank(pct=True).iloc[-1] * 100
+    percentile = series.rank(pct=True).iloc[-1]
     return float(percentile)
 
 
