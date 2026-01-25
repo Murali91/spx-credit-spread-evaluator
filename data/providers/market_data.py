@@ -40,19 +40,18 @@ def _calculate_moving_average(close_series: pd.Series) -> Optional[float]:
     return float(close_series.rolling(_MOVING_AVG_WINDOW).mean().iloc[-1])
 
 
-def get_market_data() -> Dict[str, object]:
+def get_market_data() -> Dict[str, Optional[float]]:
     """Return a dictionary with market data for SPY.
 
     Returns:
-        Dict[str, object]: Market data including OHLC history, latest close,
-        and a long-term moving average.
+        Dict[str, Optional[float]]: Market data including latest close and a
+        long-term moving average.
     """
     history = _fetch_spy_history()
-    ohlc = history[["Open", "High", "Low", "Close"]].copy()
-    latest_close = float(ohlc["Close"].iloc[-1])
-    moving_average = _calculate_moving_average(ohlc["Close"])
+    close_series = history["Close"].copy()
+    latest_close = float(close_series.iloc[-1])
+    moving_average = _calculate_moving_average(close_series)
     return {
-        "ohlc": ohlc,
         "close": latest_close,
         "moving_average": moving_average,
     }

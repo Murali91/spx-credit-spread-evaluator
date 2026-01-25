@@ -45,6 +45,6 @@ def get_skew_data() -> Dict[str, Optional[float]]:
     window = close_series.tail(_TRADING_DAYS_1Y)
     skew_percentile_1y = _calculate_percentile_rank(window)
     return {
-        "skew_today": skew_today,
+        "skew": skew_today,
         "skew_percentile_1y": skew_percentile_1y,
     }

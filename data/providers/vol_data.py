@@ -42,15 +42,9 @@ def get_vol_data() -> Dict[str, Optional[float]]:
     history = _fetch_vix_history()
     close_series = history["Close"].copy()
     vix_today = float(close_series.iloc[-1])
-    vix_1d_pct_change = None
-    if len(close_series) >= 2:
-        prior_close = float(close_series.iloc[-2])
-        if prior_close != 0:
-            vix_1d_pct_change = (vix_today - prior_close) / prior_close * 100
     window = close_series.tail(_TRADING_DAYS_1Y)
     vix_percentile_1y = _calculate_percentile_rank(window)
     return {
-        "vix_today": vix_today,
-        "vix_1d_pct_change": vix_1d_pct_change,
-        "vix_percentile_1y": vix_percentile_1y,
+        "vix": vix_today,
+        "iv_percentile": vix_percentile_1y,
     }

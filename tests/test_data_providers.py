@@ -22,7 +22,7 @@ def _build_history(rows: int) -> pd.DataFrame:
     )
 
 
-def test_get_market_data_returns_ohlc_and_moving_average(monkeypatch) -> None:
+def test_get_market_data_returns_close_and_moving_average(monkeypatch) -> None:
     history = _build_history(260)
 
     def fake_download(*_args, **_kwargs) -> pd.DataFrame:
@@ -35,7 +35,7 @@ def test_get_market_data_returns_ohlc_and_moving_average(monkeypatch) -> None:
 
     assert result["close"] == float(history["Close"].iloc[-1])
     assert result["moving_average"] == float(history["Close"].rolling(200).mean().iloc[-1])
-    assert list(result["ohlc"].columns) == ["Open", "High", "Low", "Close"]
+    assert set(result.keys()) == {"close", "moving_average"}
 
 
 def test_get_vol_data_computes_metrics_and_caches(monkeypatch) -> None:
@@ -54,14 +54,8 @@ def test_get_vol_data_computes_metrics_and_caches(monkeypatch) -> None:
 
     assert calls["count"] == 1
     assert result == second_result
-    assert result["vix_today"] == float(history["Close"].iloc[-1])
-    expected_pct_change = (
-        (history["Close"].iloc[-1] - history["Close"].iloc[-2])
-        / history["Close"].iloc[-2]
-        * 100
-    )
-    assert result["vix_1d_pct_change"] == expected_pct_change
-    assert result["vix_percentile_1y"] == 100.0
+    assert result["vix"] == float(history["Close"].iloc[-1])
+    assert result["iv_percentile"] == 100.0
 
 
 def test_get_skew_data_computes_percentile(monkeypatch) -> None:
@@ -75,5 +69,5 @@ def test_get_skew_data_computes_percentile(monkeypatch) -> None:
 
     result = skew_data.get_skew_data()
 
-    assert result["skew_today"] == float(history["Close"].iloc[-1])
+    assert result["skew"] == float(history["Close"].iloc[-1])
     assert result["skew_percentile_1y"] == 100.0
