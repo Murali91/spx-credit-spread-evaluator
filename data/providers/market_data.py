@@ -1,27 +1,60 @@
-"""Market data provider stub.
+"""Market data provider for SPY price history.
 
-This module defines a function that returns the latest market price and
-trend data needed by the decision engine.  In a real implementation this
-would call an API such as Yahoo Finance or Alpha Vantage to fetch
-SPY/SPX prices and compute moving averages.  For v0.1 this function
-returns ``None`` values as placeholders.
+This module fetches daily OHLC data for SPY using Yahoo Finance and
+derives basic trend inputs used by the decision engine.
 """
 
-from typing import Dict
+from __future__ import annotations
+
+from datetime import datetime
+from functools import lru_cache
+from typing import Dict, Optional
+
+import pandas as pd
+import yfinance as yf
 
 
-def get_market_data() -> Dict[str, float]:
-    """Return a dictionary with market data for SPY/SPX.
+_SPY_SYMBOL = "SPY"
+_LOOKBACK_DAYS = 400
+_MOVING_AVG_WINDOW = 200
 
-    Keys expected by the engine include:
 
-    - ``close``: The most recent closing price.
-    - ``moving_average``: A long‑term moving average (e.g. 200‑day MA).
+@lru_cache(maxsize=48)
+def _fetch_spy_history(as_of: datetime) -> pd.DataFrame:
+    as_of_date = pd.Timestamp(as_of).date()
+    start = (pd.Timestamp(as_of_date) - pd.Timedelta(days=_LOOKBACK_DAYS)).date()
+    end = (pd.Timestamp(as_of_date) + pd.Timedelta(days=1)).date()
+    history = yf.download(
+        _SPY_SYMBOL,
+        start=start,
+        end=end,
+        progress=False,
+        auto_adjust=False,
+    )
+    if history.empty:
+        raise ValueError("No SPY history returned from Yahoo Finance.")
+    return history.sort_index()
 
-    In this stub implementation all values are ``None``.  Replace this
-    function with real data retrieval in a later version.
+
+def _calculate_moving_average(close_series: pd.Series) -> Optional[float]:
+    if len(close_series) < _MOVING_AVG_WINDOW:
+        return None
+    return float(close_series.rolling(_MOVING_AVG_WINDOW).mean().iloc[-1])
+
+
+def get_market_data() -> Dict[str, Optional[float]]:
+    """Return a dictionary with market data for SPY.
 
     Returns:
-        Dict[str, float]: A dictionary containing placeholder values.
+        Dict[str, Optional[float]]: Market data including latest close and a
+        long-term moving average.
     """
-    return {"close": None, "moving_average": None}
+    cache_key = pd.Timestamp.utcnow().floor("h").to_pydatetime()
+    history = _fetch_spy_history(cache_key)
+    close_series = history["Close"].copy()
+    latest_close = float(close_series.iloc[-1])
+    moving_average = _calculate_moving_average(close_series)
+    return {
+        "close": latest_close,
+        "moving_average": moving_average,
+    }

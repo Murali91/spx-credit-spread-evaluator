@@ -1,23 +1,53 @@
-"""Skew and sentiment data provider stub.
+"""Skew data provider using Yahoo Finance."""
 
-The functions in this module fetch option skew and sentiment indicators.
-In the current stub implementation they return placeholder values.  A
-future implementation should query the SKEW index and other sentiment
-indicators (e.g. put/call ratios).
-"""
+from __future__ import annotations
 
-from typing import Dict
+from datetime import datetime
+from functools import lru_cache
+from typing import Dict, Optional
+
+import pandas as pd
+import yfinance as yf
 
 
-def get_skew_data() -> Dict[str, float]:
-    """Return a dictionary containing skew and sentiment metrics.
+_SKEW_SYMBOL = "^SKEW"
+_LOOKBACK_DAYS = 400
+_TRADING_DAYS_1Y = 252
 
-    Keys expected by the engine include:
 
-    - ``skew``: The CBOE SKEW index value.
-    - ``put_call_ratio``: (Optional) The total market put/call ratio.
+@lru_cache(maxsize=48)
+def _fetch_skew_history(as_of: datetime) -> pd.DataFrame:
+    as_of_date = pd.Timestamp(as_of).date()
+    start = (pd.Timestamp(as_of_date) - pd.Timedelta(days=_LOOKBACK_DAYS)).date()
+    end = (pd.Timestamp(as_of_date) + pd.Timedelta(days=1)).date()
+    history = yf.download(
+        _SKEW_SYMBOL,
+        start=start,
+        end=end,
+        progress=False,
+        auto_adjust=False,
+    )
+    if history.empty:
+        raise ValueError("No SKEW history returned from Yahoo Finance.")
+    return history.sort_index()
 
-    Returns:
-        Dict[str, float]: A dictionary with placeholder values.
-    """
-    return {"skew": None, "put_call_ratio": None}
+
+def _calculate_percentile_rank(series: pd.Series) -> Optional[float]:
+    if series.empty:
+        return None
+    percentile = series.rank(pct=True).iloc[-1]
+    return float(percentile)
+
+
+def get_skew_data() -> Dict[str, Optional[float]]:
+    """Return a dictionary containing skew metrics."""
+    cache_key = pd.Timestamp.utcnow().floor("h").to_pydatetime()
+    history = _fetch_skew_history(cache_key)
+    close_series = history["Close"].copy()
+    skew_today = float(close_series.iloc[-1])
+    window = close_series.tail(_TRADING_DAYS_1Y)
+    skew_percentile_1y = _calculate_percentile_rank(window)
+    return {
+        "skew": skew_today,
+        "skew_percentile_1y": skew_percentile_1y,
+    }

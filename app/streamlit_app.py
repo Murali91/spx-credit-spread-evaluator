@@ -24,6 +24,14 @@ from data.providers import (
 )
 
 
+def _safe_provider_call(label: str, fetcher, fallback):
+    try:
+        return fetcher()
+    except Exception:
+        st.warning(f"{label} data unavailable; using placeholders for now.")
+        return fallback
+
+
 def main() -> None:
     """Run the Streamlit app."""
     st.set_page_config(page_title="SPX Put Credit Spread Entry Advisor", page_icon="📈")
@@ -43,9 +51,21 @@ def main() -> None:
     if evaluate:
         # Gather data from providers.  In v0.1 these return None placeholders.
         data = {
-            "market": market_data.get_market_data(),
-            "volatility": vol_data.get_vol_data(),
-            "skew": skew_data.get_skew_data(),
+            "market": _safe_provider_call(
+                "Market",
+                market_data.get_market_data,
+                {"close": None, "moving_average": None},
+            ),
+            "volatility": _safe_provider_call(
+                "Volatility",
+                vol_data.get_vol_data,
+                {"vix": None, "iv_percentile": None},
+            ),
+            "skew": _safe_provider_call(
+                "Skew",
+                skew_data.get_skew_data,
+                {"skew": None, "skew_percentile_1y": None},
+            ),
             "events": {
                 "macro": macro_events.get_upcoming_macro_events(),
                 "earnings": earnings_events.get_upcoming_earnings_events(),

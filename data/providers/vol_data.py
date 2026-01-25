@@ -1,24 +1,53 @@
-"""Volatility data provider stub.
+"""Volatility data provider using Yahoo Finance."""
 
-This module defines a function that returns implied volatility metrics
-required by the decision engine.  In a real implementation this would
-query a data source for VIX values and calculate percentile rankings.
-For v0.1 it returns ``None`` placeholders.
-"""
+from __future__ import annotations
 
-from typing import Dict
+from datetime import datetime
+from functools import lru_cache
+from typing import Dict, Optional
+
+import pandas as pd
+import yfinance as yf
 
 
-def get_vol_data() -> Dict[str, float]:
-    """Return a dictionary with volatility metrics.
+_VIX_SYMBOL = "^VIX"
+_LOOKBACK_DAYS = 400
+_TRADING_DAYS_1Y = 252
 
-    Keys expected by the engine include:
 
-    - ``vix``: The current VIX index value.
-    - ``iv_percentile``: The percentile rank of implied volatility over
-      a look‑back period (e.g. the past year).
+@lru_cache(maxsize=48)
+def _fetch_vix_history(as_of: datetime) -> pd.DataFrame:
+    as_of_date = pd.Timestamp(as_of).date()
+    start = (pd.Timestamp(as_of_date) - pd.Timedelta(days=_LOOKBACK_DAYS)).date()
+    end = (pd.Timestamp(as_of_date) + pd.Timedelta(days=1)).date()
+    history = yf.download(
+        _VIX_SYMBOL,
+        start=start,
+        end=end,
+        progress=False,
+        auto_adjust=False,
+    )
+    if history.empty:
+        raise ValueError("No VIX history returned from Yahoo Finance.")
+    return history.sort_index()
 
-    Returns:
-        Dict[str, float]: A dictionary with placeholder values (all ``None``).
-    """
-    return {"vix": None, "iv_percentile": None}
+
+def _calculate_percentile_rank(series: pd.Series) -> Optional[float]:
+    if series.empty:
+        return None
+    percentile = series.rank(pct=True).iloc[-1]
+    return float(percentile)
+
+
+def get_vol_data() -> Dict[str, Optional[float]]:
+    """Return a dictionary with volatility metrics derived from VIX data."""
+    cache_key = pd.Timestamp.utcnow().floor("h").to_pydatetime()
+    history = _fetch_vix_history(cache_key)
+    close_series = history["Close"].copy()
+    vix_today = float(close_series.iloc[-1])
+    window = close_series.tail(_TRADING_DAYS_1Y)
+    vix_percentile_1y = _calculate_percentile_rank(window)
+    return {
+        "vix": vix_today,
+        "iv_percentile": vix_percentile_1y,
+    }
