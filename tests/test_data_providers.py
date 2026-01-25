@@ -114,3 +114,24 @@ def test_get_skew_data_computes_percentile(monkeypatch) -> None:
 
     assert result["skew"] == float(history["Close"].iloc[-1])
     assert result["skew_percentile_1y"] == 1.0
+
+
+def test_fetch_skew_history_cache_varies_by_date(monkeypatch) -> None:
+    history = _build_history(10)
+    calls: Dict[str, int] = {"count": 0}
+
+    def fake_download(*_args, **_kwargs) -> pd.DataFrame:
+        calls["count"] += 1
+        return history
+
+    skew_data._fetch_skew_history.cache_clear()
+    monkeypatch.setattr(skew_data.yf, "download", fake_download)
+
+    today = date(2024, 1, 1)
+    tomorrow = today + timedelta(days=1)
+
+    skew_data._fetch_skew_history(today)
+    skew_data._fetch_skew_history(today)
+    skew_data._fetch_skew_history(tomorrow)
+
+    assert calls["count"] == 2

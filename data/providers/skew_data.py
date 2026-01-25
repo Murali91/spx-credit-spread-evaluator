@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from functools import lru_cache
 from typing import Dict, Optional
 
@@ -14,10 +15,10 @@ _LOOKBACK_DAYS = 400
 _TRADING_DAYS_1Y = 252
 
 
-@lru_cache(maxsize=4)
-def _fetch_skew_history() -> pd.DataFrame:
-    start = (pd.Timestamp.utcnow() - pd.Timedelta(days=_LOOKBACK_DAYS)).date()
-    end = (pd.Timestamp.utcnow() + pd.Timedelta(days=1)).date()
+@lru_cache(maxsize=8)
+def _fetch_skew_history(as_of: date) -> pd.DataFrame:
+    start = (pd.Timestamp(as_of) - pd.Timedelta(days=_LOOKBACK_DAYS)).date()
+    end = (pd.Timestamp(as_of) + pd.Timedelta(days=1)).date()
     history = yf.download(
         _SKEW_SYMBOL,
         start=start,
@@ -39,7 +40,7 @@ def _calculate_percentile_rank(series: pd.Series) -> Optional[float]:
 
 def get_skew_data() -> Dict[str, Optional[float]]:
     """Return a dictionary containing skew metrics."""
-    history = _fetch_skew_history()
+    history = _fetch_skew_history(pd.Timestamp.utcnow().date())
     close_series = history["Close"].copy()
     skew_today = float(close_series.iloc[-1])
     window = close_series.tail(_TRADING_DAYS_1Y)
