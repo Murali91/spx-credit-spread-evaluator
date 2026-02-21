@@ -59,7 +59,7 @@ def main() -> None:
             "volatility": _safe_provider_call(
                 "Volatility",
                 vol_data.get_vol_data,
-                {"vix": None, "iv_percentile": None, "vix_change_pct": None},
+                {"vix": None, "iv_percentile": None},
             ),
             "skew": _safe_provider_call(
                 "Skew",

@@ -70,7 +70,6 @@ def make_decision(data: Dict) -> DecisionResult:
     close = _as_float(market_data.get("close"))
     moving_average = _as_float(market_data.get("moving_average"))
     vix = _as_float(vol_data.get("vix"))
-    iv_percentile = _as_float(vol_data.get("iv_percentile"))
     vix_change_pct = _as_float(vol_data.get("vix_change_pct"))
     macro_days = _as_int(macro_events.get("days_until_next"))
     earnings_days = _as_int(earnings_events.get("days_until_next"))
@@ -78,7 +77,7 @@ def make_decision(data: Dict) -> DecisionResult:
 
     missing_flags = {
         "trend": close is None or moving_average is None,
-        "volatility": iv_percentile is None or vix_change_pct is None,
+        "volatility": vol_data.get("iv_percentile") is None and vix is None,
         "events": macro_days is None or earnings_days is None,
         "skew": skew is None,
     }

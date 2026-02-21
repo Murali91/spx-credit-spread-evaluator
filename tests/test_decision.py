@@ -83,14 +83,6 @@ def test_wait_on_missing_data() -> None:
     assert any("unavailable" in reason.lower() for reason in result.reasons)
 
 
-def test_wait_when_volatility_direction_missing() -> None:
-    data = _base_data()
-    data["volatility"]["vix_change_pct"] = None
-    result = make_decision(data)
-    assert result.decision == "WAIT"
-    assert any("volatility data incomplete" in reason.lower() for reason in result.reasons)
-
-
 def test_wait_on_partial_event_data_missing() -> None:
     data = _base_data()
     data["events"]["macro"]["days_until_next"] = None

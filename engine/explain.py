@@ -47,7 +47,7 @@ def build_factor_reasons(
     reasons.append(f"Market Trend: {trend_reason}")
 
     if missing_flags.get("volatility"):
-        vol_reason = "Volatility data incomplete; cannot confirm a decline."
+        vol_reason = "Volatility data unavailable; defaulting to WAIT."
     elif disqualifiers.get("volatility_spike"):
         vol_reason = (
             "Volatility is spiking (VIX elevated and up sharply), signaling risk."
