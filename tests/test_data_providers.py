@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from typing import Dict
 
 import pandas as pd
+import pytest
 
 from data.providers import market_data, skew_data, vol_data
 
@@ -82,6 +83,7 @@ def test_get_vol_data_computes_metrics_and_caches(monkeypatch) -> None:
     assert result == second_result
     assert result["vix"] == float(history["Close"].iloc[-1])
     assert result["iv_percentile"] == 1.0
+    assert result["vix_change_pct"] == pytest.approx(1 / 259)
 
 
 def test_fetch_vix_history_cache_varies_by_date(monkeypatch) -> None:

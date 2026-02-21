@@ -39,6 +39,16 @@ def _calculate_percentile_rank(series: pd.Series) -> Optional[float]:
     return float(percentile)
 
 
+def _calculate_change_pct(series: pd.Series) -> Optional[float]:
+    if len(series) < 2:
+        return None
+    previous = float(series.iloc[-2])
+    if previous == 0:
+        return None
+    current = float(series.iloc[-1])
+    return (current - previous) / previous
+
+
 def get_vol_data() -> Dict[str, Optional[float]]:
     """Return a dictionary with volatility metrics derived from VIX data."""
     cache_key = pd.Timestamp.utcnow().floor("h").to_pydatetime()
@@ -47,7 +57,9 @@ def get_vol_data() -> Dict[str, Optional[float]]:
     vix_today = float(close_series.iloc[-1])
     window = close_series.tail(_TRADING_DAYS_1Y)
     vix_percentile_1y = _calculate_percentile_rank(window)
+    vix_change_pct = _calculate_change_pct(close_series)
     return {
         "vix": vix_today,
         "iv_percentile": vix_percentile_1y,
+        "vix_change_pct": vix_change_pct,
     }
