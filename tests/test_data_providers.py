@@ -166,3 +166,26 @@ def test_get_upcoming_macro_events_handles_missing_or_invalid_file(
     result = macro_events.get_upcoming_macro_events(today=datetime(2024, 1, 1).date())
 
     assert result == {"days_until_next": None, "description": None}
+
+
+def test_get_upcoming_macro_events_handles_invalid_json(monkeypatch, tmp_path) -> None:
+    calendar_path = tmp_path / "macro_events.json"
+    calendar_path.write_text("{invalid-json", encoding="utf-8")
+    monkeypatch.setattr(macro_events, "CALENDAR_PATH", calendar_path)
+
+    result = macro_events.get_upcoming_macro_events(today=datetime(2024, 1, 1).date())
+
+    assert result == {"days_until_next": None, "description": None}
+
+
+def test_get_upcoming_macro_events_returns_none_when_no_upcoming_events(
+    monkeypatch, tmp_path
+) -> None:
+    calendar = [{"date": "2023-12-01", "description": "Old event"}]
+    calendar_path = tmp_path / "macro_events.json"
+    calendar_path.write_text(json.dumps(calendar), encoding="utf-8")
+    monkeypatch.setattr(macro_events, "CALENDAR_PATH", calendar_path)
+
+    result = macro_events.get_upcoming_macro_events(today=datetime(2024, 1, 1).date())
+
+    assert result == {"days_until_next": None, "description": None}
