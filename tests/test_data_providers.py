@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import json
 from typing import Dict
 
 import pandas as pd
 
-from data.providers import market_data, skew_data, vol_data
+from data.providers import macro_events, market_data, skew_data, vol_data
 
 
 def _build_history(rows: int) -> pd.DataFrame:
@@ -139,3 +140,52 @@ def test_fetch_skew_history_cache_varies_by_date(monkeypatch) -> None:
     skew_data._fetch_skew_history(evening)
 
     assert calls["count"] == 2
+
+
+def test_get_upcoming_macro_events_returns_nearest_trading_day_event(
+    monkeypatch, tmp_path
+) -> None:
+    calendar = [
+        {"date": "2024-01-15", "description": "Macro event"},
+        {"date": "2024-01-19", "description": "CPI release"},
+    ]
+    calendar_path = tmp_path / "macro_events.json"
+    calendar_path.write_text(json.dumps(calendar), encoding="utf-8")
+    monkeypatch.setattr(macro_events, "CALENDAR_PATH", calendar_path)
+
+    result = macro_events.get_upcoming_macro_events(today=datetime(2024, 1, 12).date())
+
+    assert result == {"days_until_next": 1, "description": "Macro event"}
+
+
+def test_get_upcoming_macro_events_handles_missing_or_invalid_file(
+    monkeypatch, tmp_path
+) -> None:
+    monkeypatch.setattr(macro_events, "CALENDAR_PATH", tmp_path / "does-not-exist.json")
+
+    result = macro_events.get_upcoming_macro_events(today=datetime(2024, 1, 1).date())
+
+    assert result == {"days_until_next": None, "description": None}
+
+
+def test_get_upcoming_macro_events_handles_invalid_json(monkeypatch, tmp_path) -> None:
+    calendar_path = tmp_path / "macro_events.json"
+    calendar_path.write_text("{invalid-json", encoding="utf-8")
+    monkeypatch.setattr(macro_events, "CALENDAR_PATH", calendar_path)
+
+    result = macro_events.get_upcoming_macro_events(today=datetime(2024, 1, 1).date())
+
+    assert result == {"days_until_next": None, "description": None}
+
+
+def test_get_upcoming_macro_events_returns_none_when_no_upcoming_events(
+    monkeypatch, tmp_path
+) -> None:
+    calendar = [{"date": "2023-12-01", "description": "Old event"}]
+    calendar_path = tmp_path / "macro_events.json"
+    calendar_path.write_text(json.dumps(calendar), encoding="utf-8")
+    monkeypatch.setattr(macro_events, "CALENDAR_PATH", calendar_path)
+
+    result = macro_events.get_upcoming_macro_events(today=datetime(2024, 1, 1).date())
+
+    assert result == {"days_until_next": None, "description": None}
