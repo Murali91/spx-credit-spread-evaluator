@@ -84,15 +84,18 @@ def make_decision(data: Dict) -> DecisionResult:
     }
     missing_any = any(missing_flags.values())
 
+    earnings_event_imminent = (
+        earnings_days is not None
+        and earnings_days <= thresholds.EARNINGS_EVENT_WINDOW_DAYS
+    )
+
     disqualifiers = {
         "macro_event_imminent": (
             macro_days is not None
             and macro_days <= thresholds.MACRO_EVENT_WINDOW_DAYS
         ),
-        "earnings_event_imminent": (
-            earnings_days is not None
-            and earnings_days <= thresholds.EARNINGS_EVENT_WINDOW_DAYS
-        ),
+        # Hard disqualifier per Decision Spec: earnings <= 1 trading day => WAIT.
+        "earnings_event_imminent": earnings_event_imminent,
         "downtrend": close is not None
         and moving_average is not None
         and close < moving_average,

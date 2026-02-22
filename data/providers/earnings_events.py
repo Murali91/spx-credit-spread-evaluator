@@ -1,25 +1,89 @@
-"""Earnings events provider stub.
+"""Earnings events provider backed by a local JSON calendar."""
 
-This module provides functions to determine when major S&P 500 constituents
-report earnings.  In a real implementation it would query an earnings
-calendar API or scrape dates for the largest companies (e.g. Apple,
-Microsoft).  For v0.1 it returns placeholders.
-"""
+from __future__ import annotations
 
-from typing import Dict, Optional
+import json
+from datetime import date, datetime, timedelta
+from pathlib import Path
+from typing import Dict, Optional, Tuple, TypedDict
 
 
-def get_upcoming_earnings_events() -> Dict[str, Optional[int]]:
-    """Return a dictionary describing upcoming earnings events.
+class EarningsEventResult(TypedDict):
+    days_until_next: Optional[int]
+    description: Optional[str]
 
-    The returned dictionary may include:
 
-    - ``days_until_next``: The number of days until the next major earnings
-      release among the top S&P 500 constituents.  ``None`` if unknown.
-    - ``description``: A short description (e.g. "Apple earnings").  ``None``
-      if there are no imminent earnings.
+CALENDAR_PATH = (
+    Path(__file__).resolve().parents[1] / "calendar" / "top10_earnings.json"
+)
 
-    Returns:
-        Dict[str, Optional[int]]: A dictionary with placeholder values.
+
+def _trading_days_until(start: date, end: date) -> int:
+    """Count weekday trading days from ``start`` to ``end``.
+
+    A same-day event returns ``0``. Weekend days are excluded.
     """
-    return {"days_until_next": None, "description": None}
+    if end <= start:
+        return 0
+
+    days = 0
+    current = start
+    while current < end:
+        current += timedelta(days=1)
+        if current.weekday() < 5:
+            days += 1
+    return days
+
+
+def _parse_event(raw_event: Dict[str, object]) -> Optional[Tuple[date, str]]:
+    event_date_raw = raw_event.get("date")
+    description_raw = raw_event.get("description")
+
+    if not isinstance(event_date_raw, str) or not isinstance(description_raw, str):
+        return None
+
+    description = description_raw.strip()
+    if not description:
+        return None
+
+    try:
+        event_date = datetime.strptime(event_date_raw, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+    return event_date, description
+
+
+def get_upcoming_earnings_events(today: Optional[date] = None) -> EarningsEventResult:
+    """Return the next major earnings event as ``{days_until_next, description}``."""
+    current_day = today or date.today()
+
+    try:
+        with CALENDAR_PATH.open("r", encoding="utf-8") as handle:
+            raw_events = json.load(handle)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {"days_until_next": None, "description": None}
+
+    if not isinstance(raw_events, list):
+        return {"days_until_next": None, "description": None}
+
+    upcoming: list[Tuple[int, str]] = []
+    for raw_event in raw_events:
+        if not isinstance(raw_event, dict):
+            continue
+
+        parsed = _parse_event(raw_event)
+        if parsed is None:
+            continue
+
+        event_date, description = parsed
+        if event_date < current_day:
+            continue
+
+        upcoming.append((_trading_days_until(current_day, event_date), description))
+
+    if not upcoming:
+        return {"days_until_next": None, "description": None}
+
+    days_until_next, description = min(upcoming, key=lambda event: event[0])
+    return {"days_until_next": days_until_next, "description": description}
