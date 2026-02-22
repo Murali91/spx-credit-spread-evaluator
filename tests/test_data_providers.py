@@ -231,6 +231,39 @@ def test_get_upcoming_earnings_events_handles_invalid_json(monkeypatch, tmp_path
     assert result == {"days_until_next": None, "description": None}
 
 
+def test_get_upcoming_earnings_events_handles_non_list_payload(
+    monkeypatch, tmp_path
+) -> None:
+    calendar_path = tmp_path / "top10_earnings.json"
+    calendar_path.write_text(json.dumps({"date": "2024-01-15"}), encoding="utf-8")
+    monkeypatch.setattr(earnings_events, "CALENDAR_PATH", calendar_path)
+
+    result = earnings_events.get_upcoming_earnings_events(
+        today=datetime(2024, 1, 1).date()
+    )
+
+    assert result == {"days_until_next": None, "description": None}
+
+
+def test_get_upcoming_earnings_events_ignores_invalid_rows(
+    monkeypatch, tmp_path
+) -> None:
+    calendar = [
+        {"date": "not-a-date", "description": "Bad date"},
+        {"date": "2024-01-15", "description": "   "},
+        {"date": "2024-01-16", "description": "NVIDIA earnings"},
+    ]
+    calendar_path = tmp_path / "top10_earnings.json"
+    calendar_path.write_text(json.dumps(calendar), encoding="utf-8")
+    monkeypatch.setattr(earnings_events, "CALENDAR_PATH", calendar_path)
+
+    result = earnings_events.get_upcoming_earnings_events(
+        today=datetime(2024, 1, 12).date()
+    )
+
+    assert result == {"days_until_next": 2, "description": "NVIDIA earnings"}
+
+
 def test_get_upcoming_earnings_events_returns_none_when_no_upcoming_events(
     monkeypatch, tmp_path
 ) -> None:
