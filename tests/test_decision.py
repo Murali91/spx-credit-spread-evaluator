@@ -35,7 +35,7 @@ def test_wait_when_score_below_threshold() -> None:
 
 def test_wait_on_macro_event_disqualifier() -> None:
     data = _base_data()
-    data["events"]["macro"]["days_until_next"] = 2
+    data["events"]["macro"]["days_until_next"] = 3
     result = make_decision(data)
     assert result.decision == "WAIT"
     assert any("Event Risk" in reason for reason in result.reasons)
