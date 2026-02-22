@@ -49,6 +49,23 @@ def test_wait_on_earnings_disqualifier() -> None:
     assert any("earnings" in reason.lower() for reason in result.reasons)
 
 
+
+
+def test_wait_on_same_day_earnings_disqualifier() -> None:
+    data = _base_data()
+    data["events"]["earnings"]["days_until_next"] = 0
+    result = make_decision(data)
+    assert result.decision == "WAIT"
+    assert any("earnings" in reason.lower() for reason in result.reasons)
+
+
+def test_enter_when_earnings_more_than_one_day_away() -> None:
+    data = _base_data()
+    data["events"]["earnings"]["days_until_next"] = 2
+    data["events"]["macro"]["days_until_next"] = 10
+    result = make_decision(data)
+    assert result.decision == "ENTER"
+
 def test_wait_on_downtrend_disqualifier() -> None:
     data = _base_data()
     data["market"]["close"] = 4800.0
